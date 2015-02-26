@@ -3,7 +3,7 @@
 
   Fast csv tools in C. Work in progress.
 
-## ExampleS
+## Examples
 
 ### csv-cut
 
