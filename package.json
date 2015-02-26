@@ -1,9 +1,9 @@
 {
-  "name": "csv",
+  "name": "csv-tools",
   "version": "0.0.1",
-  "repo": "https://github.com/jb55/csv",
+  "repo": "https://github.com/jb55/csv-tools",
   "description": "fast C csv utilities",
-  "keywords": ["csv"],
+  "keywords": ["csv-tools", "csv"],
   "dependencies": {
     "jb55/csv.c": "*"
   },
