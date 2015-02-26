@@ -2,17 +2,46 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <getopt.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include "csv.c/csv.h"
+
+void usage (int status) {
+  fputs ("Usage: csv-cut OPTION... [FILE]...\n", stdout);
+  fputs ("Print selected fields from each csv FILE to standard output.\n\n", stdout);
+
+  fputs ("Mandatory arguments to long options are mandatory for short options too.\n", stdout);
+  fputs ("  -f, --fields=FIELD             select only these fields\n", stdout);
+  fputs ("  -o, --output-delimiter=CHAR    select the output delimiters\n", stdout);
+  fputs ("  -d, --input-delimiter=CHAR     select the input delimiters\n", stdout);
+  fputs ("  -v, --complement               invert the field selection\n", stdout);
+  fputs ("  -t, --output-tabs              shortcut for -o $'\\t'\n", stdout);
+
+  exit (status);
+};
+
+
+static struct option const longopts[] =
+{
+  {"fields", required_argument, NULL, 'f'},
+  {"output-delimiter", required_argument, NULL, 'o'},
+  {"complement", no_argument, NULL, 'v'},
+  {"output-tabs", no_argument, NULL, 't'},
+  {"help", no_argument, NULL, 'h'},
+  {NULL, 0, NULL, 0}
+};
+
 
 static int streq (const char* str1, const char* str2) {
   return strcmp (str1, str2) == 0;
 }
 
 static int chosen = -1;
+static int complement = 0;
 static char delim = ',';
+static char output_delim = -1;
 static int current_field = 0;
 
 struct field_range {
@@ -21,8 +50,19 @@ struct field_range {
 };
 
 void field_cb (void* data, size_t len, void* outfile, int is_last) {
-  if (++current_field == chosen) {
-    fwrite(data, len, 1, (FILE*) outfile);
+  ++current_field;
+
+  // TODO (jb55): branch prediction?
+  // TODO (jb55): move field writing logic out of this utility
+  // TODO (jb55): is_numeric field check to prevent quoting
+  if (complement ? current_field != chosen : current_field == chosen) {
+    if (!complement && output_delim == ',')
+      csv_fwrite((FILE*) outfile, data, len);
+    else
+      fwrite(data, len, 1, (FILE*) outfile);
+
+    if (complement && !is_last)
+      fputc(output_delim, (FILE*) outfile);
   }
 }
 
@@ -89,16 +129,11 @@ cut_csv (char const *file) {
   return 1;
 }
 
-void usage (int code) {
-  printf("usage: csv-cut -f1 [FILES]\n");
-  exit(code);
-}
-
 int main(int argc, const char *argv[]) {
   char c;
   int ok;
 
-  while ((c = getopt (argc, argv, "f:d:")) != -1) {
+  while ((c = getopt_long (argc, argv, "d:f:o:vth", longopts, NULL)) != -1) {
     switch (c) {
       case 'f': {
         chosen = atoi(optarg);
@@ -106,6 +141,22 @@ int main(int argc, const char *argv[]) {
       }
       case 'd': {
         delim = optarg[0];
+        break;
+      }
+      case 'h': {
+        usage(EXIT_SUCCESS);
+        break;
+      }
+      case 'o': {
+        output_delim = optarg[0];
+        break;
+      }
+      case 't': {
+        output_delim = '\t';
+        break;
+      }
+      case 'v': {
+        complement = 1;
         break;
       }
       case '?': {
@@ -119,6 +170,10 @@ int main(int argc, const char *argv[]) {
         usage (EXIT_FAILURE);
       }
     }
+  }
+
+  if (output_delim == -1) {
+    output_delim = delim;
   }
 
   if (optind == argc)
