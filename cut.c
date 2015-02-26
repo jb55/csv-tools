@@ -22,7 +22,7 @@ void usage (int status) {
   exit (status);
 };
 
-
+// TODO (jb55): cut based on column names
 static struct option const longopts[] =
 {
   {"fields", required_argument, NULL, 'f'},
