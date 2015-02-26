@@ -1,0 +1,12 @@
+{
+  "name": "csv",
+  "version": "0.0.1",
+  "repo": "https://github.com/jb55/csv",
+  "description": "fast C csv utilities",
+  "keywords": ["csv"],
+  "dependencies": {
+    "jb55/csv.c": "*"
+  },
+  "install": "make install"
+}
+

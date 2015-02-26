@@ -1,0 +1,9 @@
+{
+  "name": "csv.c",
+  "version": "0.0.1",
+  "repo": "https://github.com/jb55/csv.c",
+  "description": "csv parser",
+  "keywords": ["csv"],
+  "src": ["csv.c", "csv.h"]
+}
+
