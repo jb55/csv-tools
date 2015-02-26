@@ -19,7 +19,7 @@
 
   TODO: generalize
 
-    $ csv-tabuldate < huge_data.csv
+    $ csv-tabulate < huge_data.csv
 
 ## License
 
