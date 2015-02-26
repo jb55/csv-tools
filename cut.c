@@ -107,7 +107,7 @@ cut_csv (char const *file) {
   else {
     stream = fopen (file, "r");
     if (stream == NULL) {
-      error (0, errno, "%s", file);
+      //error (0, errno, "%s", file);
       return 0;
     }
   }
@@ -115,14 +115,14 @@ cut_csv (char const *file) {
   cut_csv_stream (stream);
 
   if (ferror (stream)) {
-    error (0, errno, "%s", file);
+    //error (0, errno, "%s", file);
     return 0;
   }
   if (is_stdin) {
     clearerr (stream);
   }
   else if (fclose (stream) == EOF) {
-    error (0, errno, "%s", file);
+    //error (0, errno, "%s", file);
     return 0;
   }
 
