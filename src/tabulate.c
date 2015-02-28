@@ -24,7 +24,7 @@ int main(int argc, const char *argv[]) {
   struct csv_parser parser;
 
   csv_init(&parser, 0);
-  
+
   while ((nread = fread(buffer, 1, sizeof(buffer), stdin)) > 0) {
     csv_parse(&parser, buffer, nread, field_cb, row_cb, stdout);
   }
