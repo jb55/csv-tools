@@ -15,7 +15,6 @@ void field_cb(void* data, size_t len, void* outfile, int is_last) {
 }
 
 void row_cb(int c, void *outfile) {
-  fseek((FILE *)outfile, -1, SEEK_CUR);
   fputc('\n', (FILE *)outfile);
 }
 
