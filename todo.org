@@ -1,0 +1,18 @@
+
+* CSV Tools
+
+** Base csv command
+
+*** Remove cut stuff
+*** Build csv_parser struct
+*** Pass to subcommands
+*** Field inference
+
+Detect number fields, don't write quote in those
+
+** cut
+
+*** field parsing clib
+*** cut based on field selection
+*** column name field selector?
+
