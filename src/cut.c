@@ -8,7 +8,8 @@
 #include <errno.h>
 #include "csv.c/csv.h"
 
-void usage (int status) {
+static void
+usage (int status) {
   fputs ("Usage: csv-cut OPTION... [FILE]...\n", stdout);
   fputs ("Print selected fields from each csv FILE to standard output.\n\n", stdout);
 
@@ -49,7 +50,8 @@ struct field_range {
   int end;
 };
 
-void field_cb (void* data, size_t len, void* outfile, int is_last) {
+static void
+field_cb (void* data, size_t len, void* outfile, int is_last) {
   ++current_field;
 
   // TODO (jb55): branch prediction?
@@ -66,9 +68,53 @@ void field_cb (void* data, size_t len, void* outfile, int is_last) {
   }
 }
 
-void row_cb(int c, void *outfile) {
+static void
+row_cb(int c, void *outfile) {
   current_field = 0;
   fputc('\n', (FILE *) outfile);
+}
+
+static int
+cut_csv_stream (struct csv_parser * parser, FILE *stream) {
+  char buffer[65535];
+  ssize_t nread;
+
+  while ((nread = fread(buffer, 1, sizeof(buffer), stream)) > 0) {
+    csv_parse(parser, buffer, nread, field_cb, row_cb, stdout);
+  }
+
+  csv_fini(parser, field_cb, row_cb, stdout);
+}
+
+// TODO (jb55): abstract this somehow?
+static int
+cut_csv_file (struct csv_parser * parser, const char * file) {
+  FILE *stream;
+  int is_stdin = streq(file, "-");
+
+  if (is_stdin) {
+    stream = stdin;
+  }
+  else {
+    stream = fopen (file, "r");
+    if (stream == NULL) {
+      return 0;
+    }
+  }
+
+  cut_csv_stream (parser, stream);
+
+  if (ferror (stream)) {
+    return 0;
+  }
+  if (is_stdin) {
+    clearerr (stream);
+  }
+  else if (fclose (stream) == EOF) {
+    return 0;
+  }
+
+  return 1;
 }
 
 // TODO (jb55): implement field range parsing, perhaps separate module?
@@ -79,90 +125,23 @@ struct field_range parse_field_range(const char *range) {
   }
 }
 
-static void
-cut_csv_stream (FILE *stream) {
-  char buffer[65535];
-  struct csv_parser parser;
-  ssize_t nread;
-
-  csv_init(&parser, 0);
-  csv_set_delim(&parser, delim);
-
-  while ((nread = fread(buffer, 1, sizeof(buffer), stream)) > 0) {
-    csv_parse(&parser, buffer, nread, field_cb, row_cb, stdout);
-  }
-
-  csv_fini(&parser, field_cb, row_cb, stdout);
-  csv_free(&parser);
-}
-
-static int
-cut_csv (char const *file) {
-  FILE *stream;
-  int is_stdin = streq(file, "-");
-
-  if (is_stdin) {
-    stream = stdin;
-  }
-  else {
-    stream = fopen (file, "r");
-    if (stream == NULL) {
-      //error (0, errno, "%s", file);
-      return 0;
-    }
-  }
-
-  cut_csv_stream (stream);
-
-  if (ferror (stream)) {
-    //error (0, errno, "%s", file);
-    return 0;
-  }
-  if (is_stdin) {
-    clearerr (stream);
-  }
-  else if (fclose (stream) == EOF) {
-    //error (0, errno, "%s", file);
-    return 0;
-  }
-
-  return 1;
-}
-
-int main(int argc, const char *argv[]) {
+int cmd_cut(struct csv_parser * parser, int argc, const char ** argv) {
   char c;
   int ok;
+  int i;
 
-  while ((c = getopt_long (argc, argv, "d:f:o:vth", longopts, NULL)) != -1) {
+  while ((c = getopt_long (argc, argv, "f:vh", longopts, NULL)) != -1) {
     switch (c) {
       case 'f': {
         chosen = atoi(optarg);
-        break;
-      }
-      case 'd': {
-        delim = optarg[0];
         break;
       }
       case 'h': {
         usage(EXIT_SUCCESS);
         break;
       }
-      case 'o': {
-        output_delim = optarg[0];
-        break;
-      }
-      case 't': {
-        output_delim = '\t';
-        break;
-      }
       case 'v': {
         complement = 1;
-        break;
-      }
-      case '?': {
-        if (c == 'd') {
-          delim = ',';
-        }
         break;
       }
       default: {
@@ -177,12 +156,11 @@ int main(int argc, const char *argv[]) {
   }
 
   if (optind == argc)
-    ok = cut_csv ("-");
+    ok = cut_csv_file (parser, "-");
   else {
-    printf("file!?\n");
     for (ok = 1; optind < argc; optind++)
-      ok &= cut_csv (argv[optind]);
+      ok &= cut_csv_file (parser, argv[optind]);
   }
 
-  exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+  return ok;
 }

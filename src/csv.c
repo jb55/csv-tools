@@ -8,20 +8,20 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "csv.c/csv.h"
+#include "subcommands.h"
 
 void usage (int status) {
-  fputs ("Usage: csv [OPTION]... <command> [COMMAND_OPTION]... [FILE]...\n", stdout);
+  fputs ("Usage: csv [OPTION]... <subcommand> [COMMAND_OPTION]... [FILE]...\n", stdout);
   fputs ("Print selected fields from each csv FILE to standard output.\n\n", stdout);
 
-  fputs ("csv base options", stdout);
+  fputs ("csv base options\n\n", stdout);
   fputs ("  -d, --input-delimiter=CHAR     select the input delimiter\n", stdout);
   fputs ("  -o, --output-delimiter=CHAR    select the output delimiter\n", stdout);
   fputs ("  -t, --output-tabs              use a tab output delimiter\n", stdout);
-  fputs ("  -q, --quote-char=CHAR          quote ", stdout);
+  fputs ("  -q, --quote-char=CHAR          quote", stdout);
 
-  fputs ("csv commands", stdout);
+  fputs ("\n\ncsv subcommands\n", stdout);
   fputs ("  cut                            cut columns\n", stdout);
-
 
   exit (status);
 };
@@ -30,17 +30,15 @@ static struct option const longopts[] =
 {
   {"output-delimiter", required_argument, NULL, 'o'},
   {"output-tabs", no_argument, NULL, 't'},
+  {"quote-char", required_argument, NULL, 'q'},
   {"help", no_argument, NULL, 'h'},
   {NULL, 0, NULL, 0}
 };
-
 
 static int streq (const char* str1, const char* str2) {
   return strcmp (str1, str2) == 0;
 }
 
-static int chosen = -1;
-static int complement = 0;
 static char delim = ',';
 static char output_delim = -1;
 static int current_field = 0;
@@ -50,49 +48,75 @@ struct field_range {
   int end;
 };
 
-void field_cb (void* data, size_t len, void* outfile, int is_last) {
-  ++current_field;
+typedef struct cmd_t {
+	const char *cmd;
+	int (*fn)(struct csv_parser *, int, const char **);
+} cmd_t;
 
-  // TODO (jb55): branch prediction?
-  // TODO (jb55): move field writing logic out of this utility
-  // TODO (jb55): is_numeric field check to prevent quoting
-  if (complement ? current_field != chosen : current_field == chosen) {
-    if (!complement && output_delim == ',')
-      csv_fwrite((FILE*) outfile, data, len);
-    else
-      fwrite(data, len, 1, (FILE*) outfile);
+static cmd_t commands[] = {
+	//{ "id", cmd_id },
+	{ "cut", cmd_cut }
+};
 
-    if (complement && !is_last)
-      fputc(output_delim, (FILE*) outfile);
+// TODO (jb55): move me somewhere nicer
+#define NELEMS(x)  (sizeof(x) / sizeof(x[0]))
+
+// check to see if a command is in the subcommand list
+static cmd_t *
+get_cmd (const char * cmd) {
+  int i;
+  cmd_t * command = NULL;
+
+  for (i = 0; i < NELEMS(commands); i++) {
+    command = &commands[i];
+    if (streq(command->cmd, cmd))
+      return command;
   }
+
+  return NULL;
 }
 
-void row_cb(int c, void *outfile) {
-  current_field = 0;
-  fputc('\n', (FILE *) outfile);
+// find a subcommand from a list of strings
+static int
+find_subcommand(int num_cmds, const char ** cmds) {
+  int i;
+  const char * cmd;
+
+  for (i = 1; i < num_cmds; i++) {
+    cmd = cmds[i];
+    if (cmd[0] == '-') continue;
+    if (get_cmd(cmd))
+      return i;
+  }
+
+  return -1;
 }
 
-int main(int argc, const char *argv[]) {
+
+int main(int argc, char * const * argv) {
   char c;
   int ok;
+  int i;
+  int subcommand_loc;
+  const char * chosen_cmd = NULL;
+  cmd_t * cmd = NULL;
+  int no_more_args;
 
-  struct csv_parser parser;
-
-  csv_init(&parser, 0);
-  csv_set_delim(&parser, delim);
-
-  while ((nread = fread(buffer, 1, sizeof(buffer), stream)) > 0) {
-    csv_parse(&parser, buffer, nread, field_cb, row_cb, stdout);
+  if (argc == 1) {
+    usage(EXIT_FAILURE);
   }
 
-  csv_fini(&parser, field_cb, row_cb, stdout);
-  csv_free(&parser);
+  struct csv_parser parser;
+  csv_init(&parser, 0);
 
-  while ((c = getopt_long (argc, argv, "q:d:o:vth", longopts, NULL)) != -1) {
+  subcommand_loc = find_subcommand(argc, (const char **)argv);
+  subcommand_loc = subcommand_loc > 0 ? subcommand_loc : argc;
+
+  while ((c = getopt_long (subcommand_loc, argv, "q:d:o:th", longopts, NULL)) != -1) {
     switch (c) {
       case 'q': {
         // TODO (jb55): implement quote character
-        quote_char = 'q';
+        csv_set_quote(&parser, optarg[0]);
         break;
       }
       case 'd': {
@@ -109,10 +133,6 @@ int main(int argc, const char *argv[]) {
       }
       case 't': {
         output_delim = '\t';
-        break;
-      }
-      case 'v': {
-        complement = 1;
         break;
       }
       case '?': {
@@ -132,13 +152,24 @@ int main(int argc, const char *argv[]) {
     output_delim = delim;
   }
 
-  if (optind == argc)
-    ok = cut_csv ("-");
-  else {
-    printf("file!?\n");
-    for (ok = 1; optind < argc; optind++)
-      ok &= cut_csv (argv[optind]);
+  // init parser settings
+  csv_set_delim(&parser, delim);
+
+  // choose command
+  chosen_cmd = optind == argc ? "id" : argv[optind];
+
+  // get the command
+  cmd = get_cmd(chosen_cmd);
+
+  if (!cmd) {
+    ok = 0;
   }
+  else {
+    int new_argc = argc - subcommand_loc;
+    ok = cmd->fn(&parser, new_argc, &argv[subcommand_loc]);
+  }
+
+  csv_free(&parser);
 
   exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
 }

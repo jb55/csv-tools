@@ -2,17 +2,15 @@
 * CSV Tools
 
 ** Base csv command
-
-*** Remove cut stuff
-*** Build csv_parser struct
-*** Pass to subcommands
 *** Field inference
-
-Detect number fields, don't write quote in those
+**** Detect number fields, don't write quote in those
+**** Separate utility file so that can be used by other commands
 
 ** cut
-
 *** field parsing clib
-*** cut based on field selection
 *** column name field selector?
 
+** Too lazy to do right now
+*** Move file handling to base?
+We don't need to get as general as git does
+We should be able to just pass the stream to the subcommands?
