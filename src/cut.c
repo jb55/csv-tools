@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "csv.c/csv.h"
+#include "subcommands.h"
 
 static void
 usage (int status) {
@@ -15,10 +16,7 @@ usage (int status) {
 
   fputs ("Mandatory arguments to long options are mandatory for short options too.\n", stdout);
   fputs ("  -f, --fields=FIELD             select only these fields\n", stdout);
-  fputs ("  -o, --output-delimiter=CHAR    select the output delimiters\n", stdout);
-  fputs ("  -d, --input-delimiter=CHAR     select the input delimiters\n", stdout);
   fputs ("  -v, --complement               invert the field selection\n", stdout);
-  fputs ("  -t, --output-tabs              shortcut for -o $'\\t'\n", stdout);
 
   exit (status);
 };
@@ -27,9 +25,7 @@ usage (int status) {
 static struct option const longopts[] =
 {
   {"fields", required_argument, NULL, 'f'},
-  {"output-delimiter", required_argument, NULL, 'o'},
   {"complement", no_argument, NULL, 'v'},
-  {"output-tabs", no_argument, NULL, 't'},
   {"help", no_argument, NULL, 'h'},
   {NULL, 0, NULL, 0}
 };
@@ -41,7 +37,6 @@ static int streq (const char* str1, const char* str2) {
 
 static int chosen = -1;
 static int complement = 0;
-static char delim = ',';
 static char output_delim = -1;
 static int current_field = 0;
 
@@ -125,11 +120,21 @@ struct field_range parse_field_range(const char *range) {
   }
 }
 
-int cmd_cut(struct csv_parser * parser, int argc, const char ** argv) {
+int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
+            int argc, const char ** argv) {
   char c;
   int ok;
   int i;
 
+  output_delim = opts->output_delim;
+  printf("output_delim %d \n", output_delim);
+  printf("input_delim %c \n", parser->delim_char);
+
+  for (i = 0; i < argc; i++) {
+    printf("cut arg %s\n", argv[i]);
+  }
+
+  optind = 0;
   while ((c = getopt_long (argc, argv, "f:vh", longopts, NULL)) != -1) {
     switch (c) {
       case 'f': {
@@ -145,14 +150,10 @@ int cmd_cut(struct csv_parser * parser, int argc, const char ** argv) {
         break;
       }
       default: {
-        printf("exiting because of %d\n", c);
+        printf("csv-cut exiting because of %d\n", c);
         usage (EXIT_FAILURE);
       }
     }
-  }
-
-  if (output_delim == -1) {
-    output_delim = delim;
   }
 
   if (optind == argc)

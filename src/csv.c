@@ -29,8 +29,9 @@ void usage (int status) {
 static struct option const longopts[] =
 {
   {"output-delimiter", required_argument, NULL, 'o'},
-  {"output-tabs", no_argument, NULL, 't'},
+  {"input-delimiter", required_argument, NULL, 'd'},
   {"quote-char", required_argument, NULL, 'q'},
+  {"output-tabs", no_argument, NULL, 't'},
   {"help", no_argument, NULL, 'h'},
   {NULL, 0, NULL, 0}
 };
@@ -40,7 +41,6 @@ static int streq (const char* str1, const char* str2) {
 }
 
 static char delim = ',';
-static char output_delim = -1;
 static int current_field = 0;
 
 struct field_range {
@@ -50,7 +50,7 @@ struct field_range {
 
 typedef struct cmd_t {
 	const char *cmd;
-	int (*fn)(struct csv_parser *, int, const char **);
+	int (*fn)(struct csv_parser *, extra_csv_opts_t *, int, const char **);
 } cmd_t;
 
 static cmd_t commands[] = {
@@ -102,6 +102,10 @@ int main(int argc, char * const * argv) {
   cmd_t * cmd = NULL;
   int no_more_args;
 
+  extra_csv_opts_t opts = {
+    .output_delim = -1
+  };
+
   if (argc == 1) {
     usage(EXIT_FAILURE);
   }
@@ -115,7 +119,6 @@ int main(int argc, char * const * argv) {
   while ((c = getopt_long (subcommand_loc, argv, "q:d:o:th", longopts, NULL)) != -1) {
     switch (c) {
       case 'q': {
-        // TODO (jb55): implement quote character
         csv_set_quote(&parser, optarg[0]);
         break;
       }
@@ -128,32 +131,33 @@ int main(int argc, char * const * argv) {
         break;
       }
       case 'o': {
-        output_delim = optarg[0];
+        opts.output_delim = optarg[0];
         break;
       }
       case 't': {
-        output_delim = '\t';
+        opts.output_delim = '\t';
         break;
       }
       case '?': {
         if (c == 'd') {
+          // use , input delimination by default
           delim = ',';
         }
         break;
       }
       default: {
-        printf("exiting because of %d\n", c);
+        printf("csv exiting because of %d\n", c);
         usage (EXIT_FAILURE);
       }
     }
   }
 
-  if (output_delim == -1) {
-    output_delim = delim;
+  if (opts.output_delim == -1) {
+    opts.output_delim = delim;
   }
 
   // init parser settings
-  csv_set_delim(&parser, delim);
+  //csv_set_delim(&parser, delim);
 
   // choose command
   chosen_cmd = optind == argc ? "id" : argv[optind];
@@ -166,7 +170,7 @@ int main(int argc, char * const * argv) {
   }
   else {
     int new_argc = argc - subcommand_loc;
-    ok = cmd->fn(&parser, new_argc, &argv[subcommand_loc]);
+    ok = cmd->fn(&parser, &opts, new_argc, &argv[subcommand_loc]);
   }
 
   csv_free(&parser);

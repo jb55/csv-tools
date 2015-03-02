@@ -6,11 +6,18 @@
 **** Detect number fields, don't write quote in those
 **** Separate utility file so that can be used by other commands
 
-** cut
-*** field parsing clib
-*** column name field selector?
+** Commands to implement
+*** cut
+**** -t command seems broken
+**** field parsing clib
+We can just GPL this and use coreutils field parser?
+**** column name field selector?
+*** id
+Identity transform, can be used to tweak
+input and output delimiters
 
 ** Too lazy to do right now
+*** Error handling
 *** Move file handling to base?
 We don't need to get as general as git does
 We should be able to just pass the stream to the subcommands?
