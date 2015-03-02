@@ -8,7 +8,6 @@
 
 ** Commands to implement
 *** cut
-**** -t command seems broken
 **** field parsing clib
 We can just GPL this and use coreutils field parser?
 **** column name field selector?

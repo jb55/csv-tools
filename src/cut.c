@@ -127,12 +127,6 @@ int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
   int i;
 
   output_delim = opts->output_delim;
-  printf("output_delim %d \n", output_delim);
-  printf("input_delim %c \n", parser->delim_char);
-
-  for (i = 0; i < argc; i++) {
-    printf("cut arg %s\n", argv[i]);
-  }
 
   optind = 0;
   while ((c = getopt_long (argc, argv, "f:vh", longopts, NULL)) != -1) {
