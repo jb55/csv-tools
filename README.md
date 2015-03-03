@@ -7,7 +7,8 @@ Fast csv tools in C. Work in progress.
 
 ### csv
 
-The bas
+The base command, used for configuring input and output delimiters, quote
+characters, etc.
 
 ### csv cut
 
