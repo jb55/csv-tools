@@ -1,12 +1,12 @@
 {
   "name": "csv-tools",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "repo": "https://github.com/jb55/csv-tools",
   "description": "fast C csv utilities",
   "keywords": ["csv-tools", "csv"],
   "dependencies": {
     "jb55/csv.c": "*",
-    "jb55/field-range-parser.c": "*"
+    "jb55/field-range-parser.c": "0.0.2"
   },
   "install": "make install"
 }

@@ -2,4 +2,5 @@ miscdata
 bin
 csv
 *.csv
+*.o
 *.tsv
