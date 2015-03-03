@@ -8,8 +8,10 @@
 #include <errno.h>
 
 #include "csv.c/csv.h"
-#include "subcommands.h"
 #include "field-range-parser/field-range-parser.h"
+
+#include "subcommands.h"
+#include "inference.h"
 
 static void
 usage (int status) {
@@ -40,6 +42,7 @@ static int streq (const char* str1, const char* str2) {
 static int chosen = -1;
 static int complement = 0;
 static char output_delim = -1;
+static char quote_char = '"';
 static int current_field = 0;
 static struct field_range frp;
 
@@ -72,19 +75,23 @@ anything_after(struct field_range * fp, int field, int complement, int is_last) 
 
 static void
 field_cb (void* data, size_t len, void* outfile, int is_last) {
+  FILE * out = (FILE*)outfile;
   ++current_field;
 
   is_last = anything_after(&frp, current_field, complement, is_last);
   chosen = field_range_is_set(&frp, current_field);
 
   if (complement ? !chosen : chosen) {
-    if (output_delim == ',')
-      csv_fwrite((FILE*) outfile, data, len);
+    if (output_delim != '\t' && should_quote((const char *)data, len, output_delim)) {
+      fputc(quote_char, out);
+      fwrite(data, len, 1, out);
+      fputc(quote_char, out);
+    }
     else
-      fwrite(data, len, 1, (FILE*) outfile);
+      fwrite(data, len, 1, out);
 
     if (!is_last)
-      fputc(output_delim, (FILE*) outfile);
+      fputc(output_delim, out);
   }
 }
 
@@ -145,6 +152,7 @@ int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
 
   field_range_init(&frp, NULL);
   output_delim = opts->output_delim;
+  quote_char = parser->quote_char;
 
   optind = 0;
   while ((c = getopt_long (argc, argv, "f:vh", longopts, NULL)) != -1) {
