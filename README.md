@@ -5,11 +5,15 @@ Fast csv tools in C. Work in progress.
 
 ## Examples
 
+### csv
+
 ### csv cut
 
-cut analog for csvs
+`cut` analog for CSVs
 
-    $ csv cut -f2 < huge_data.csv
+Output tabs, cutting fields 2,3, 4 to 6, 11, and everything after 11:
+
+    $ csv -t cut -f 2,3,4-6,11- < huge_data.csv
 
 ## License
 
