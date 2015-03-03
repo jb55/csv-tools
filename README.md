@@ -7,11 +7,13 @@ Fast csv tools in C. Work in progress.
 
 ### csv
 
+The bas
+
 ### csv cut
 
 `cut` analog for CSVs
 
-Output tabs, cutting fields 2,3, 4 to 6, 11, and everything after 11:
+Output tabs, cutting fields `2`, `3`, `4` to `6`, `11`, and everything after `11`:
 
     $ csv -t cut -f 2,3,4-6,11- < huge_data.csv
 
