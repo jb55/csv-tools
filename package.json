@@ -5,8 +5,8 @@
   "description": "fast C csv utilities",
   "keywords": ["csv-tools", "csv"],
   "dependencies": {
-    "jb55/csv.c": "*"
+    "jb55/csv.c": "*",
+    "jb55/field-range-parser.c": "*"
   },
   "install": "make install"
 }
-

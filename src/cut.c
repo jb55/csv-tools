@@ -6,8 +6,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+
 #include "csv.c/csv.h"
 #include "subcommands.h"
+#include "field-range-parser/field-range-parser.h"
 
 static void
 usage (int status) {
@@ -39,26 +41,49 @@ static int chosen = -1;
 static int complement = 0;
 static char output_delim = -1;
 static int current_field = 0;
+static struct field_range frp;
 
-struct field_range {
-  int start;
-  int end;
-};
+static int
+anything_after(struct field_range * fp, int field, int complement, int is_last) {
+  if (!complement) {
+    // if we have N-
+    if (fp->all_from != -1) {
+      // just use is_last from our callback
+      return is_last;
+    }
+    else {
+      // use the highest set field
+      return field >= frp._highest_set;
+    }
+  }
+  else {
+    // if we have N-
+    if (fp->all_from != -1) {
+      // then when complementing, there is nothing after N
+      return field >= fp->all_from - 1;
+    }
+    else {
+      return is_last;
+    }
+  }
+
+  return 1;
+}
 
 static void
 field_cb (void* data, size_t len, void* outfile, int is_last) {
   ++current_field;
 
-  // TODO (jb55): branch prediction?
-  // TODO (jb55): move field writing logic out of this utility
-  // TODO (jb55): is_numeric field check to prevent quoting
-  if (complement ? current_field != chosen : current_field == chosen) {
-    if (!complement && output_delim == ',')
+  is_last = anything_after(&frp, current_field, complement, is_last);
+  chosen = field_range_is_set(&frp, current_field);
+
+  if (complement ? !chosen : chosen) {
+    if (output_delim == ',')
       csv_fwrite((FILE*) outfile, data, len);
     else
       fwrite(data, len, 1, (FILE*) outfile);
 
-    if (complement && !is_last)
+    if (!is_last)
       fputc(output_delim, (FILE*) outfile);
   }
 }
@@ -112,27 +137,21 @@ cut_csv_file (struct csv_parser * parser, const char * file) {
   return 1;
 }
 
-// TODO (jb55): implement field range parsing, perhaps separate module?
-struct field_range parse_field_range(const char *range) {
-  int len = strlen(range);
-  int i;
-  for (i = 0; i < len; i++) {
-  }
-}
-
 int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
             int argc, const char ** argv) {
   char c;
-  int ok;
-  int i;
+  int ok, i;
+  int parsed = 0;
 
+  field_range_init(&frp, NULL);
   output_delim = opts->output_delim;
 
   optind = 0;
   while ((c = getopt_long (argc, argv, "f:vh", longopts, NULL)) != -1) {
     switch (c) {
       case 'f': {
-        chosen = atoi(optarg);
+        parsed = 1;
+        field_range_parse(&frp, optarg);
         break;
       }
       case 'h': {
@@ -144,10 +163,13 @@ int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
         break;
       }
       default: {
-        printf("csv-cut exiting because of %d\n", c);
         usage (EXIT_FAILURE);
       }
     }
+  }
+
+  if (!parsed) {
+    usage (EXIT_FAILURE);
   }
 
   if (optind == argc)
@@ -156,6 +178,8 @@ int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
     for (ok = 1; optind < argc; optind++)
       ok &= cut_csv_file (parser, argv[optind]);
   }
+
+  field_range_free(&frp, NULL);
 
   return ok;
 }
