@@ -51,7 +51,8 @@ typedef struct cmd_t {
 
 static cmd_t commands[] = {
 	//{ "id", cmd_id },
-	{ "cut", cmd_cut }
+	{ "cut", cmd_cut },
+	{ "grep", cmd_grep },
 };
 
 // TODO (jb55): move me somewhere nicer

@@ -10,6 +10,7 @@ OBJS += src/csv.o
 OBJS += src/inference.o
 OBJS += src/cut.o
 OBJS += src/util.o
+OBJS += src/grep.o
 
 all: csv
 

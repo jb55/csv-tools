@@ -35,42 +35,58 @@ static struct option const longopts[] =
   {NULL, 0, NULL, 0}
 };
 
-static int chosen = -1;
+static char *to_match;
+static int matched = 0;
 static int complement = 0;
 static char output_delim = -1;
 static char quote_char = '"';
 static int current_field = 0;
 static struct field_range frp;
 
+static char tmp_buf[65535];
+static int pos = 0;
+
 static void
 field_cb (void* data, size_t len, void* outfile, int is_last) {
   FILE * out = (FILE*)outfile;
   ++current_field;
 
-  chosen = field_range_is_set(&frp, current_field);
+  matched = memcmp(to_match, data, len) == 0;
 
-  if (chosen) {
-    if (output_delim != '\t' && should_quote((const char *)data, len, output_delim)) {
-      fputc(quote_char, out);
-      fwrite(data, len, 1, out);
-      fputc(quote_char, out);
-    }
-    else
-      fwrite(data, len, 1, out);
-
-    if (!is_last)
-      fputc(output_delim, out);
+  // TODO: refactor this logic
+  if (output_delim != '\t' && should_quote((const char *)data, len, output_delim)) {
+    tmp_buf[pos++] = quote_char;
+    memcpy(&tmp_buf[pos], data, len);
+    pos += len;
+    tmp_buf[pos++] = quote_char;
   }
+  else {
+    memcpy(&tmp_buf[pos], data, len);
+    pos += len;
+  }
+
+  if (!is_last)
+    tmp_buf[pos++] = output_delim;
 }
 
 static void
 row_cb(int c, void *outfile) {
+  FILE * out = (FILE*)outfile;
+
+  if (matched) {
+    fwrite(tmp_buf, pos, 1, out);
+  }
+
+  pos = 0;
   current_field = 0;
-  fputc('\n', (FILE *) outfile);
+  matched = 0;
+
+  fputc('\n', out);
 }
 
-int cmd_grep(struct csv_parser * parser, extra_csv_opts_t *opts,
-            int argc, const char ** argv) {
+
+int cmd_grep(struct csv_parser * parser, extra_csv_opts_t *opts, int argc,
+             const char ** argv) {
   char c;
   int ok, i;
   int parsed = 0;
@@ -105,11 +121,13 @@ int cmd_grep(struct csv_parser * parser, extra_csv_opts_t *opts,
     usage (EXIT_FAILURE);
   }
 
+  to_match = argv[optind];
+
   if (optind == argc)
-    ok = process_csv_file(parser, "-");
+    ok = process_csv_file(field_cb, row_cb, parser, "-");
   else {
     for (ok = 1; optind < argc; optind++)
-      ok &= process_csv_file(cut_csv_stream, parser, argv[optind]);
+      ok &= process_csv_file(field_cb, row_cb, parser, argv[optind]);
   }
 
   field_range_free(&frp, NULL);
