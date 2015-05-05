@@ -1,7 +1,7 @@
 
 BIN ?= csv
 PREFIX ?= /usr/local
-CFLAGS =
+CFLAGS = -Weverything
 
 OBJS  = deps/csv.c/csv.o
 OBJS += deps/field-range-parser/field-range-parser.o
@@ -9,6 +9,7 @@ OBJS += deps/field-range-parser/field-range-parser.o
 OBJS += src/csv.o
 OBJS += src/inference.o
 OBJS += src/cut.o
+OBJS += src/util.o
 
 all: csv
 

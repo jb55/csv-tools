@@ -36,10 +36,6 @@ static struct option const longopts[] =
   {NULL, 0, NULL, 0}
 };
 
-static int streq (const char* str1, const char* str2) {
-  return strcmp (str1, str2) == 0;
-}
-
 static char delim = ',';
 static int current_field = 0;
 
@@ -157,7 +153,7 @@ int main(int argc, char * const * argv) {
   }
 
   // init parser settings
-  //csv_set_delim(&parser, delim);
+  csv_set_delim(&parser, delim);
 
   // choose command
   chosen_cmd = optind == argc ? "id" : argv[optind];

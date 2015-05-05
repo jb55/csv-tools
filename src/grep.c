@@ -1,4 +1,5 @@
 
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,18 +11,17 @@
 #include "csv.c/csv.h"
 #include "field-range-parser/field-range-parser.h"
 
-#include "util.h"
 #include "subcommands.h"
 #include "inference.h"
 
 static void
 usage (int status) {
-  fputs ("Usage: csv-cut OPTION... [FILE]...\n", stdout);
-  fputs ("Print selected fields from each csv FILE to standard output.\n\n", stdout);
+  fputs ("Usage: csv-grep OPTION... [FILE]...\n", stdout);
+  fputs ("Grep on fields in a csv FILE to standard output.\n\n", stdout);
 
   fputs ("Mandatory arguments to long options are mandatory for short options too.\n", stdout);
   fputs ("  -f, --fields=FIELD             select only these fields\n", stdout);
-  fputs ("  -v, --complement               invert the field selection\n", stdout);
+  fputs ("  -v, --complement               invert the grep selection\n", stdout);
 
   exit (status);
 };
@@ -35,7 +35,6 @@ static struct option const longopts[] =
   {NULL, 0, NULL, 0}
 };
 
-
 static int chosen = -1;
 static int complement = 0;
 static char output_delim = -1;
@@ -43,42 +42,14 @@ static char quote_char = '"';
 static int current_field = 0;
 static struct field_range frp;
 
-static int
-anything_after(struct field_range * fp, int field, int complement, int is_last) {
-  if (!complement) {
-    // if we have N-
-    if (fp->all_from != -1) {
-      // just use is_last from our callback
-      return is_last;
-    }
-    else {
-      // use the highest set field
-      return field >= frp._highest_set;
-    }
-  }
-  else {
-    // if we have N-
-    if (fp->all_from != -1) {
-      // then when complementing, there is nothing after N
-      return field >= fp->all_from - 1;
-    }
-    else {
-      return is_last;
-    }
-  }
-
-  return 1;
-}
-
 static void
 field_cb (void* data, size_t len, void* outfile, int is_last) {
   FILE * out = (FILE*)outfile;
   ++current_field;
 
-  is_last = anything_after(&frp, current_field, complement, is_last);
   chosen = field_range_is_set(&frp, current_field);
 
-  if (complement ? !chosen : chosen) {
+  if (chosen) {
     if (output_delim != '\t' && should_quote((const char *)data, len, output_delim)) {
       fputc(quote_char, out);
       fwrite(data, len, 1, out);
@@ -98,8 +69,7 @@ row_cb(int c, void *outfile) {
   fputc('\n', (FILE *) outfile);
 }
 
-
-int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
+int cmd_grep(struct csv_parser * parser, extra_csv_opts_t *opts,
             int argc, const char ** argv) {
   char c;
   int ok, i;
@@ -136,10 +106,10 @@ int cmd_cut(struct csv_parser * parser, extra_csv_opts_t *opts,
   }
 
   if (optind == argc)
-    ok = process_csv_file(field_cb, row_cb, parser, "-");
+    ok = process_csv_file(parser, "-");
   else {
     for (ok = 1; optind < argc; optind++)
-      ok &= process_csv_file(field_cb, row_cb, parser, argv[optind]);
+      ok &= process_csv_file(cut_csv_stream, parser, argv[optind]);
   }
 
   field_range_free(&frp, NULL);
