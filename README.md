@@ -18,6 +18,16 @@ Output tabs, cutting fields `2`, `3`, `4` to `6`, `11`, and everything after `11
 
     $ csv -t cut -f 2,3,4-6,11- < huge_data.csv
 
+### csv grep
+
+`grep` targetting specific fields
+
+Note, this is really simply at the moment. It supports exact matching
+from the start of the field. This will be replaced with regex in the near
+future
+
+    $ csv grep -f3,2 'William' < huge_data.csv
+
 ## License
 
   GPLv2
