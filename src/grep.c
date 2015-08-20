@@ -11,12 +11,13 @@
 #include "csv.c/csv.h"
 #include "field-range-parser/field-range-parser.h"
 
+#include "util.h"
 #include "subcommands.h"
 #include "inference.h"
 
 static void
 usage (int status) {
-  fputs ("Usage: csv-grep OPTION... [FILE]...\n", stdout);
+  fputs ("Usage: csv grep OPTION... [FILE]...\n", stdout);
   fputs ("Grep on fields in a csv FILE to standard output.\n\n", stdout);
 
   fputs ("Mandatory arguments to long options are mandatory for short options too.\n", stdout);
@@ -35,7 +36,8 @@ static struct option const longopts[] =
   {NULL, 0, NULL, 0}
 };
 
-static char *to_match;
+static const char *to_match;
+static int to_match_len;
 static int matched = 0;
 static int complement = 0;
 static char output_delim = -1;
@@ -49,9 +51,16 @@ static int pos = 0;
 static void
 field_cb (void* data, size_t len, void* outfile, int is_last) {
   FILE * out = (FILE*)outfile;
+  int chosen;
   ++current_field;
 
-  matched = memcmp(to_match, data, len) == 0;
+  chosen = field_range_is_set(&frp, current_field);
+
+  if (chosen) {
+    matched = matched ||
+              (len == 0 && to_match_len == 0) ||
+              (to_match_len == 0 ? 0 : memcmp(to_match, data, to_match_len) == 0);
+  }
 
   // TODO: refactor this logic
   if (output_delim != '\t' && should_quote((const char *)data, len, output_delim)) {
@@ -75,13 +84,13 @@ row_cb(int c, void *outfile) {
 
   if (matched) {
     fwrite(tmp_buf, pos, 1, out);
+    fputc('\n', out);
   }
 
   pos = 0;
   current_field = 0;
   matched = 0;
 
-  fputc('\n', out);
 }
 
 
@@ -117,13 +126,14 @@ int cmd_grep(struct csv_parser * parser, extra_csv_opts_t *opts, int argc,
     }
   }
 
-  if (!parsed) {
+  if (!parsed || optind >= argc) {
     usage (EXIT_FAILURE);
   }
 
   to_match = argv[optind];
+  to_match_len = strlen(to_match);
 
-  if (optind == argc)
+  if (++optind == argc)
     ok = process_csv_file(field_cb, row_cb, parser, "-");
   else {
     for (ok = 1; optind < argc; optind++)
