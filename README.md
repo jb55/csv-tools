@@ -1,5 +1,11 @@
-
 # csv-tools
+
+Deprecated
+
+Check out [csv-delim](https://github.com/jb55/csv-delim) for a simplified
+tool that adheres to the Unix philosphy a bit better.
+
+## Description
 
 Fast csv tools in C. Work in progress.
 
